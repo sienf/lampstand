@@ -18,8 +18,9 @@ class Reaction(lampstand.reactions.base.Reaction):
 	uses = []
 
 	def __init__(self, connection):
-		self.channelMatch = (re.compile('^%s.  ?ask the [oracle|8.ball]' % connection.nickname, re.IGNORECASE),
-			re.compile('^%s. should I .*' % connection.nickname, re.IGNORECASE))
+		self.channelMatch = (re.compile('^%s.?  ?ask the [oracle|8.ball]' % connection.nickname, re.IGNORECASE),
+			re.compile('^%s.? should I .*' % connection.nickname, re.IGNORECASE),
+                        re.compile('^%s.? should (\S+) .*' % connection.nickname, re.IGNORECASE))
 
 
 	def channelAction(self, connection, user, channel, message, matchIndex):
@@ -37,6 +38,18 @@ class Reaction(lampstand.reactions.base.Reaction):
 
 		self.updateOveruse()
 		
-		connection.msg(channel, "%s: %s" % (user, eightball.question()) )
+		by_proxy_match = self.channelMatch[2].match(message)
+		if (by_proxy_match is not None and
+                    self.channelMatch[1].match(message) is None):
+                        proxy_nick = by_proxy_match.group(1)
+                        if proxy_nick in connection.people:
+                            connection.msg(channel, "{}: {}".filter(
+                                proxy_nick, eightball.question()))
+                        else:
+                            connection.msg(channel,
+                            "{}: Who is {}?".format(user, proxy_nick)
+		else:
+                    connection.msg(channel, "{}: {}".format(
+                        user, eightball.question()) )
 
 		return True
